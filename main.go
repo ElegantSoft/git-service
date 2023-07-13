@@ -42,7 +42,6 @@ func main() {
 
 		case github.PushPayload:
 			pushEvent := payload.(github.PushPayload)
-			fmt.Printf("%+v", pushEvent)
 			// Do whatever you want from here...
 			if pushEvent.Ref == fmt.Sprintf("refs/heads/%v", os.Getenv("BRANCH_NAME")) && pushEvent.Repository.FullName == os.Getenv("REPO_NAME") {
 				// Run the specific .sh file
