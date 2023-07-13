@@ -61,7 +61,12 @@ func main() {
 			fmt.Printf("%+v", pullRequest)
 		}
 	})
+	http.HandleFunc("/hello", getHello)
 
 	log.Printf("Starting server on : %v...", os.Getenv("PORT"))
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", os.Getenv("port")), nil))
+	log.Fatal(http.ListenAndServe(":9092", nil))
+}
+func getHello(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("got /hello request\n")
+	io.WriteString(w, "Hello, HTTP!\n")
 }
