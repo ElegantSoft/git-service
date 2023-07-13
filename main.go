@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/joho/godotenv"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -20,10 +21,8 @@ func main() {
 	hook, _ := github.New(github.Options.Secret(os.Getenv("WEB_HOOK_SECRET")))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("Hello World!")
-		// respond with ok status for health checks
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		fmt.Printf("got /hello request\n")
+		io.WriteString(w, "Hello, HTTP!\n")
 	})
 
 	// Start the server and listen for incoming GitHub webhook events
