@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/go-playground/webhooks/v6/github"
+	"github.com/joho/godotenv"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +11,11 @@ import (
 )
 
 func main() {
+
+	err := godotenv.Load(".env")
+	if err != nil {
+		panic(err)
+	}
 	// Create a new GitHub webhook instance
 	hook, _ := github.New(github.Options.Secret(os.Getenv("WEB_HOOK_SECRET")))
 
@@ -50,6 +56,6 @@ func main() {
 		}
 	})
 
-	log.Printf("Starting server on :%s...", os.Getenv("PORT"))
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("port")), nil))
+	log.Printf("Starting server on : %v...", os.Getenv("PORT"))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", os.Getenv("port")), nil))
 }
