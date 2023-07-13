@@ -19,6 +19,13 @@ func main() {
 	// Create a new GitHub webhook instance
 	hook, _ := github.New(github.Options.Secret(os.Getenv("WEB_HOOK_SECRET")))
 
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello World!")
+		// respond with ok status for health checks
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
 	// Start the server and listen for incoming GitHub webhook events
 	http.HandleFunc("/webhook", func(w http.ResponseWriter, r *http.Request) {
 		payload, err := hook.Parse(r, github.PushEvent)
