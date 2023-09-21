@@ -21,7 +21,6 @@ func main() {
 	hook, _ := github.New(github.Options.Secret(os.Getenv("WEB_HOOK_SECRET")))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("got /hello request\n")
 		io.WriteString(w, "Hello, HTTP!\n")
 	})
 
@@ -59,6 +58,7 @@ func main() {
 			// Do whatever you want from here...
 			fmt.Printf("%+v", pullRequest)
 		}
+		io.WriteString(w, "Hello, HTTP!\n")
 	})
 	http.HandleFunc("/hello", getHello)
 
