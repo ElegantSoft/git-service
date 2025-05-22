@@ -2,21 +2,83 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-playground/webhooks/v6/github"
-	"github.com/joho/godotenv"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
+
+	"github.com/go-playground/webhooks/v6/github"
+	"github.com/joho/godotenv"
 )
 
-func main() {
+// Target represents a repository, branch and script to execute
+type Target struct {
+	RepoName  string
+	Branch    string
+	ShellPath string
+}
 
+// parseTargets parses the environment variables to get multiple targets
+func parseTargets() []Target {
+	var targets []Target
+
+	// Get the number of targets
+	count := 1
+	for {
+		repoName := os.Getenv(fmt.Sprintf("REPO_NAME_%d", count))
+		if repoName == "" {
+			break
+		}
+
+		branch := os.Getenv(fmt.Sprintf("BRANCH_NAME_%d", count))
+		shellPath := os.Getenv(fmt.Sprintf("SHELL_PATH_%d", count))
+
+		// Only add if all required fields are present
+		if branch != "" && shellPath != "" {
+			targets = append(targets, Target{
+				RepoName:  repoName,
+				Branch:    branch,
+				ShellPath: shellPath,
+			})
+		}
+
+		count++
+	}
+
+	// Handle legacy single target format if no numbered targets found
+	if len(targets) == 0 {
+		repoName := os.Getenv("REPO_NAME")
+		branch := os.Getenv("BRANCH_NAME")
+		shellPath := os.Getenv("SHELL_PATH")
+
+		if repoName != "" && branch != "" && shellPath != "" {
+			targets = append(targets, Target{
+				RepoName:  repoName,
+				Branch:    branch,
+				ShellPath: shellPath,
+			})
+		}
+	}
+
+	return targets
+}
+
+func main() {
 	err := godotenv.Load(".env")
 	if err != nil {
 		panic(err)
 	}
+
+	// Parse targets from environment variables
+	targets := parseTargets()
+
+	if len(targets) == 0 {
+		log.Println("Warning: No targets configured")
+	} else {
+		log.Printf("Loaded %d target(s)", len(targets))
+	}
+
 	// Create a new GitHub webhook instance
 	hook, _ := github.New(github.Options.Secret(os.Getenv("WEB_HOOK_SECRET")))
 
@@ -41,15 +103,24 @@ func main() {
 
 		case github.PushPayload:
 			pushEvent := payload.(github.PushPayload)
-			// Do whatever you want from here...
-			if pushEvent.Ref == fmt.Sprintf("refs/heads/%v", os.Getenv("BRANCH_NAME")) && pushEvent.Repository.FullName == os.Getenv("REPO_NAME") {
-				// Run the specific .sh file
-				cmd := exec.Command("bash", os.Getenv("SHELL_PATH"))
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-				err := cmd.Run()
-				if err != nil {
-					log.Printf("Failed to run script: %s", err)
+
+			// Check against all targets
+			for _, target := range targets {
+				refBranch := fmt.Sprintf("refs/heads/%v", target.Branch)
+
+				if pushEvent.Ref == refBranch && pushEvent.Repository.FullName == target.RepoName {
+					log.Printf("Matched target: repo=%s, branch=%s", target.RepoName, target.Branch)
+
+					// Run the specific .sh file
+					cmd := exec.Command("bash", target.ShellPath)
+					cmd.Stdout = os.Stdout
+					cmd.Stderr = os.Stderr
+					err := cmd.Run()
+					if err != nil {
+						log.Printf("Failed to run script %s: %s", target.ShellPath, err)
+					} else {
+						log.Printf("Successfully executed script: %s", target.ShellPath)
+					}
 				}
 			}
 
@@ -62,9 +133,15 @@ func main() {
 	})
 	http.HandleFunc("/hello", getHello)
 
-	log.Printf("Starting server on : %v...", os.Getenv("PORT"))
-	log.Fatal(http.ListenAndServe(":9092", nil))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "9092" // Default port if not specified
+	}
+
+	log.Printf("Starting server on port: %v...", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
+
 func getHello(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("got /hello request\n")
 	io.WriteString(w, "Hello, HTTP!\n")
